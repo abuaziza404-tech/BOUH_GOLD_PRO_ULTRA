@@ -1,490 +1,60 @@
-name: Build BOUH GOLD PRO ULTRA Release APK
+name: Build BOUH GOLD PRO ULTRA APK
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - master
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
-  build-release-apk:
-    name: Build Release APK
+  build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup Java JDK
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Flutter Stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
 
-      - name: Create Expo app automatically
-        run: |
-          npx create-expo-app@latest mobile --template blank --yes
+      - name: Flutter version
+        run: flutter --version
 
-      - name: Write BOUH app files
-        run: |
-          cd mobile
-
-          cat > app.json <<'EOF'
-          {
-            "expo": {
-              "name": "BOUH GOLD PRO ULTRA",
-              "slug": "bouh-gold-pro-ultra",
-              "version": "12.6.1",
-              "orientation": "portrait",
-              "userInterfaceStyle": "dark",
-              "newArchEnabled": false,
-              "android": {
-                "package": "com.abuaziza.bouhgoldproultra",
-                "versionCode": 127,
-                "permissions": []
-              },
-              "ios": {
-                "bundleIdentifier": "com.abuaziza.bouhgoldproultra"
-              }
-            }
-          }
-          EOF
-
-          cat > App.js <<'EOF'
-          import React, { useMemo, useState } from 'react';
-          import {
-            SafeAreaView,
-            ScrollView,
-            View,
-            Text,
-            TextInput,
-            TouchableOpacity,
-            StyleSheet,
-            StatusBar
-          } from 'react-native';
-
-          const OWNER = 'Engineer Ahmed Abu Aziza Al-Rashidi';
-          const VERSION = 'BOUH SUPREME OS v12.6.1';
-
-          function clamp01(v) {
-            const n = Number(v);
-            if (!Number.isFinite(n)) return 0;
-            return Math.max(0, Math.min(1, n));
-          }
-
-          function num(v, fallback = 0) {
-            const x = Number(v);
-            return Number.isFinite(x) ? x : fallback;
-          }
-
-          function classifyIPI(score) {
-            if (score >= 85) return 'TARGET-B / هدف عالي الأولوية';
-            if (score >= 70) return 'TARGET-B CANDIDATE / مرشح قوي';
-            if (score >= 55) return 'HOLD / يحتاج تحقق';
-            if (score >= 35) return 'LOW HOLD / ضعيف';
-            return 'REJECT / رفض';
-          }
-
-          function gpzStrategy(magneticRisk, quartzQI) {
-            const m = clamp01(magneticRisk);
-            const q = clamp01(quartzQI);
-
-            if (m > 0.75) {
-              return {
-                mode: 'High Yield',
-                ground: 'Severe / Difficult',
-                sensitivity: '8 - 11',
-                audio: 'Low / On',
-                swing: 'Very slow swing فوق الأرض المغناطيسية واللاتريت/البازلت'
-              };
-            }
-
-            if (m < 0.45 && q > 0.65) {
-              return {
-                mode: 'General / Deep',
-                ground: 'Normal',
-                sensitivity: '12 - 16',
-                audio: 'Off',
-                swing: 'Slow controlled swing لتعظيم العمق في جيوب صخور الأساس'
-              };
-            }
-
-            return {
-              mode: 'High Yield / General',
-              ground: 'Difficult',
-              sensitivity: '10 - 13',
-              audio: 'Low',
-              swing: 'Slow swing مع موازنة مستمرة للأرض'
-            };
-          }
-
-          function evaluateTarget(input) {
-            const S = clamp01(input.structure);
-            const A = clamp01(input.alteration);
-            const P = clamp01(input.pattern);
-            const F = clamp01(input.field);
-
-            const hasStructure = S >= 0.35;
-            const hasPattern = P >= 0.35;
-            const hasClaySwir = A >= 0.35;
-            const active = [S, A, P, F].filter(x => x >= 0.35).length;
-
-            let kill = [];
-            if (!hasStructure) kill.push('No Structure = Reject');
-            if (!hasPattern) kill.push('No Pattern = Reject');
-            if (!hasClaySwir) kill.push('No Clay/SWIR = HOLD');
-            if (active < 3) kill.push('أقل من 3 مؤشرات نشطة = Downgrade');
-
-            const rawIPI = 100 * ((0.35 * S) + (0.30 * A) + (0.20 * P) + (0.15 * F));
-            let ipi = rawIPI;
-
-            if (!hasStructure || !hasPattern) ipi = Math.min(ipi, 34);
-            else if (!hasClaySwir) ipi = Math.min(ipi, 54);
-            else if (active < 3) ipi = Math.min(ipi, 69);
-
-            return {
-              ipi: Math.round(ipi),
-              rawIPI: Math.round(rawIPI),
-              className: classifyIPI(ipi),
-              active,
-              kill,
-              gpz: gpzStrategy(input.magneticRisk, input.quartzQI)
-            };
-          }
-
-          const library = [
-            {
-              title: 'Quartz / عروق المرو',
-              type: 'Gold-Quartz Vein',
-              use: 'مؤشر داعم قوي فقط إذا جاء مع بنية قص أو كسر ونمط واضح وSWIR/Clay.'
-            },
-            {
-              title: 'Gossan / جوسان',
-              type: 'Oxidation Cap',
-              use: 'مهم عند تقاطع الحديد مع الطين والسيليكا، ولا يعتمد عليه منفردًا بسبب ضوضاء اللاتريت.'
-            },
-            {
-              title: 'Pyrite / بيريت',
-              type: 'Sulfide',
-              use: 'مؤشر كبريتيدي داعم، يحتاج تمييزه عن البارايت والحديد السطحي.'
-            },
-            {
-              title: 'Chalcopyrite / كالكوبايرايت',
-              type: 'Cu-Fe Sulfide',
-              use: 'يدعم أنظمة hydrothermal/base-metal وقد يجاور الذهب في نطاقات shear.'
-            },
-            {
-              title: 'Barite Noise / ضوضاء البارايت',
-              type: 'False Positive',
-              use: 'قد يعطي بياضًا أو شذوذًا بصريًا مضللًا؛ لا يرفع الهدف دون بنية وClay/SWIR.'
-            }
-          ];
-
-          export default function App() {
-            const [unlocked, setUnlocked] = useState(false);
-            const [pass, setPass] = useState('');
-
-            const [lat, setLat] = useState('19.6045911');
-            const [lon, setLon] = useState('36.9171953');
-            const [structure, setStructure] = useState('0.82');
-            const [alteration, setAlteration] = useState('0.74');
-            const [pattern, setPattern] = useState('0.78');
-            const [field, setField] = useState('0.62');
-            const [magneticRisk, setMagneticRisk] = useState('0.40');
-            const [quartzQI, setQuartzQI] = useState('0.72');
-
-            const result = useMemo(() => evaluateTarget({
-              structure: num(structure),
-              alteration: num(alteration),
-              pattern: num(pattern),
-              field: num(field),
-              magneticRisk: num(magneticRisk),
-              quartzQI: num(quartzQI)
-            }), [structure, alteration, pattern, field, magneticRisk, quartzQI]);
-
-            if (!unlocked) {
-              return (
-                <SafeAreaView style={styles.safe}>
-                  <StatusBar barStyle="light-content" />
-                  <View style={styles.lock}>
-                    <Text style={styles.logo}>BOUH GOLD PRO ULTRA</Text>
-                    <Text style={styles.sub}>Sovereign Gold Exploration System</Text>
-                    <Text style={styles.owner}>{OWNER}</Text>
-
-                    <TextInput
-                      style={styles.input}
-                      placeholder="أدخل رمز الدخول"
-                      placeholderTextColor="#7f8c8d"
-                      secureTextEntry
-                      value={pass}
-                      onChangeText={setPass}
-                    />
-
-                    <TouchableOpacity
-                      style={styles.button}
-                      onPress={() => setUnlocked(pass.trim() === 'Abuaziza2000')}
-                    >
-                      <Text style={styles.buttonText}>دخول المنظومة</Text>
-                    </TouchableOpacity>
-
-                    <Text style={styles.note}>رمز الدخول: Abuaziza2000</Text>
-                  </View>
-                </SafeAreaView>
-              );
-            }
-
-            return (
-              <SafeAreaView style={styles.safe}>
-                <StatusBar barStyle="light-content" />
-                <ScrollView contentContainerStyle={styles.container}>
-                  <Text style={styles.logo}>BOUH GOLD PRO ULTRA</Text>
-                  <Text style={styles.sub}>{VERSION}</Text>
-                  <Text style={styles.owner}>{OWNER}</Text>
-
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>إحداثيات الهدف</Text>
-                    <View style={styles.row}>
-                      <Field label="Latitude" value={lat} setValue={setLat} />
-                      <Field label="Longitude" value={lon} setValue={setLon} />
-                    </View>
-                  </View>
-
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>محرك القرار IPI</Text>
-                    <Field label="Structure S" value={structure} setValue={setStructure} />
-                    <Field label="Alteration / SWIR A" value={alteration} setValue={setAlteration} />
-                    <Field label="Pattern P" value={pattern} setValue={setPattern} />
-                    <Field label="Field Evidence F" value={field} setValue={setField} />
-
-                    <View style={styles.resultBox}>
-                      <Text style={styles.bigScore}>{result.ipi}</Text>
-                      <Text style={styles.className}>{result.className}</Text>
-                      <Text style={styles.small}>Raw IPI: {result.rawIPI} | Active: {result.active}/4</Text>
-                    </View>
-
-                    {result.kill.length > 0 ? (
-                      <View style={styles.killBox}>
-                        <Text style={styles.killTitle}>Kill Matrix</Text>
-                        {result.kill.map((k, i) => (
-                          <Text key={i} style={styles.kill}>• {k}</Text>
-                        ))}
-                      </View>
-                    ) : (
-                      <Text style={styles.pass}>لا توجد بوابة قتل حرجة. الهدف مؤهل للمتابعة.</Text>
-                    )}
-                  </View>
-
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>إعدادات GPZ 7000</Text>
-                    <Field label="Magnetic Ground Risk" value={magneticRisk} setValue={setMagneticRisk} />
-                    <Field label="Quartz QI" value={quartzQI} setValue={setQuartzQI} />
-                    <Text style={styles.line}>Gold Mode: {result.gpz.mode}</Text>
-                    <Text style={styles.line}>Ground Type: {result.gpz.ground}</Text>
-                    <Text style={styles.line}>Sensitivity: {result.gpz.sensitivity}</Text>
-                    <Text style={styles.line}>Audio Smoothing: {result.gpz.audio}</Text>
-                    <Text style={styles.line}>Swing: {result.gpz.swing}</Text>
-                  </View>
-
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>المكتبة الجيولوجية المدمجة</Text>
-                    {library.map((item, i) => (
-                      <View key={i} style={styles.libItem}>
-                        <Text style={styles.libTitle}>{item.title}</Text>
-                        <Text style={styles.libType}>{item.type}</Text>
-                        <Text style={styles.libUse}>{item.use}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>KML مبدئي</Text>
-                    <Text style={styles.kml}>
-          {`<kml>
-            <Document>
-              <Placemark>
-                <name>BOUH Target - IPI ${result.ipi}</name>
-                <description>${result.className}</description>
-                <Point>
-                  <coordinates>${lon},${lat},0</coordinates>
-                </Point>
-              </Placemark>
-            </Document>
-          </kml>`}
-                    </Text>
-                  </View>
-
-                  <Text style={styles.footer}>
-                    No Structure + No Pattern + No Clay/SWIR = Reject/Hold. لا تقييم على FeOx وحده.
-                  </Text>
-                </ScrollView>
-              </SafeAreaView>
-            );
-          }
-
-          function Field({ label, value, setValue }) {
-            return (
-              <View style={styles.field}>
-                <Text style={styles.label}>{label}</Text>
-                <TextInput
-                  style={styles.inputSmall}
-                  value={value}
-                  onChangeText={setValue}
-                  keyboardType="numeric"
-                  placeholderTextColor="#7f8c8d"
-                />
-              </View>
-            );
-          }
-
-          const styles = StyleSheet.create({
-            safe: { flex: 1, backgroundColor: '#071013' },
-            lock: { flex: 1, padding: 24, justifyContent: 'center' },
-            container: { padding: 16, paddingBottom: 40 },
-            logo: {
-              color: '#f1c40f',
-              fontSize: 27,
-              fontWeight: '900',
-              textAlign: 'center',
-              marginTop: 10
-            },
-            sub: { color: '#9fb3c8', fontSize: 14, textAlign: 'center', marginTop: 6 },
-            owner: {
-              color: '#dfe6e9',
-              fontSize: 13,
-              textAlign: 'center',
-              marginTop: 6,
-              marginBottom: 16
-            },
-            card: {
-              backgroundColor: '#101b22',
-              borderColor: '#263743',
-              borderWidth: 1,
-              borderRadius: 18,
-              padding: 15,
-              marginBottom: 14
-            },
-            cardTitle: {
-              color: '#ffffff',
-              fontSize: 19,
-              fontWeight: '800',
-              marginBottom: 12,
-              textAlign: 'right'
-            },
-            row: { flexDirection: 'row', gap: 10 },
-            field: { flex: 1, marginBottom: 10 },
-            label: { color: '#9fb3c8', marginBottom: 6, textAlign: 'left' },
-            input: {
-              backgroundColor: '#0b141a',
-              color: '#fff',
-              borderWidth: 1,
-              borderColor: '#344955',
-              borderRadius: 14,
-              padding: 14,
-              marginTop: 14,
-              fontSize: 16
-            },
-            inputSmall: {
-              backgroundColor: '#0b141a',
-              color: '#fff',
-              borderWidth: 1,
-              borderColor: '#344955',
-              borderRadius: 12,
-              padding: 12,
-              fontSize: 15
-            },
-            button: {
-              backgroundColor: '#d4af37',
-              padding: 15,
-              borderRadius: 14,
-              marginTop: 14
-            },
-            buttonText: {
-              color: '#071013',
-              fontWeight: '900',
-              textAlign: 'center',
-              fontSize: 17
-            },
-            note: { color: '#7f8c8d', marginTop: 12, textAlign: 'center' },
-            resultBox: {
-              backgroundColor: '#071013',
-              borderRadius: 16,
-              padding: 18,
-              alignItems: 'center',
-              marginTop: 8
-            },
-            bigScore: { color: '#f1c40f', fontSize: 56, fontWeight: '900' },
-            className: {
-              color: '#ffffff',
-              fontSize: 18,
-              fontWeight: '800',
-              textAlign: 'center'
-            },
-            small: { color: '#9fb3c8', marginTop: 8 },
-            killBox: {
-              backgroundColor: '#2a1515',
-              borderColor: '#8e2b2b',
-              borderWidth: 1,
-              borderRadius: 14,
-              padding: 12,
-              marginTop: 12
-            },
-            killTitle: { color: '#ff7675', fontWeight: '900', marginBottom: 6, fontSize: 16 },
-            kill: { color: '#ffd6d6', marginBottom: 4, textAlign: 'right' },
-            pass: { color: '#55efc4', marginTop: 12, textAlign: 'right' },
-            line: { color: '#dfe6e9', marginBottom: 7, textAlign: 'right' },
-            libItem: {
-              backgroundColor: '#071013',
-              borderRadius: 14,
-              padding: 12,
-              marginBottom: 10
-            },
-            libTitle: { color: '#f1c40f', fontWeight: '900', fontSize: 16, textAlign: 'right' },
-            libType: { color: '#9fb3c8', marginTop: 3, textAlign: 'right' },
-            libUse: { color: '#ffffff', marginTop: 6, lineHeight: 21, textAlign: 'right' },
-            kml: {
-              color: '#dfe6e9',
-              fontSize: 11,
-              backgroundColor: '#071013',
-              padding: 10,
-              borderRadius: 10
-            },
-            footer: { color: '#9fb3c8', textAlign: 'center', marginTop: 10, lineHeight: 22 }
-          });
-          EOF
+      - name: Clean Flutter project
+        run: flutter clean
 
       - name: Install dependencies
-        run: |
-          cd mobile
-          npm install
+        run: flutter pub get
 
-      - name: Generate Android native project
-        run: |
-          cd mobile
-          npx expo prebuild --platform android --clean
+      - name: Analyze project
+        run: flutter analyze
+        continue-on-error: true
 
-      - name: Build Release APK with bundled JS
-        run: |
-          cd mobile/android
-          chmod +x gradlew
-          ./gradlew assembleRelease
+      - name: Build release APK
+        run: flutter build apk --release
 
-      - name: Find and copy APK
+      - name: Rename APK
         run: |
-          mkdir -p output
-          find mobile/android/app/build/outputs/apk -name "*.apk" -type f
-          cp $(find mobile/android/app/build/outputs/apk -name "*.apk" -type f | head -n 1) output/BOUH_GOLD_PRO_ULTRA_RELEASE.apk
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk dist/bouh-gold-pro-ultra-v12.apk
 
-      - name: Upload Release APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BOUH_GOLD_PRO_ULTRA_RELEASE_APK
-          path: output/BOUH_GOLD_PRO_ULTRA_RELEASE.apk
+          name: bouh-gold-pro-ultra-v12-apk
+          path: dist/bouh-gold-pro-ultra-v12.apk
+          retention-days: 30
