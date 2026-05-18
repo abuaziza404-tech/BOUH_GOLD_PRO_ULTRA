@@ -1,4 +1,4 @@
-name: Build BOUH GOLD PRO ULTRA APK
+name: Build BOUH GOLD PRO ULTRA Release APK
 
 on:
   workflow_dispatch:
@@ -8,8 +8,8 @@ on:
       - master
 
 jobs:
-  build-apk:
-    name: Create App and Build APK
+  build-release-apk:
+    name: Build Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -30,11 +30,11 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Create Expo project automatically
+      - name: Create Expo app automatically
         run: |
           npx create-expo-app@latest mobile --template blank --yes
 
-      - name: Write BOUH GOLD PRO ULTRA App
+      - name: Write BOUH app files
         run: |
           cd mobile
 
@@ -43,13 +43,13 @@ jobs:
             "expo": {
               "name": "BOUH GOLD PRO ULTRA",
               "slug": "bouh-gold-pro-ultra",
-              "version": "12.6.0",
+              "version": "12.6.1",
               "orientation": "portrait",
               "userInterfaceStyle": "dark",
-              "newArchEnabled": true,
+              "newArchEnabled": false,
               "android": {
                 "package": "com.abuaziza.bouhgoldproultra",
-                "versionCode": 126,
+                "versionCode": 127,
                 "permissions": []
               },
               "ios": {
@@ -73,7 +73,7 @@ jobs:
           } from 'react-native';
 
           const OWNER = 'Engineer Ahmed Abu Aziza Al-Rashidi';
-          const VERSION = 'BOUH SUPREME OS v12.6';
+          const VERSION = 'BOUH SUPREME OS v12.6.1';
 
           function clamp01(v) {
             const n = Number(v);
@@ -81,7 +81,7 @@ jobs:
             return Math.max(0, Math.min(1, n));
           }
 
-          function n(v, fallback = 0) {
+          function num(v, fallback = 0) {
             const x = Number(v);
             return Number.isFinite(x) ? x : fallback;
           }
@@ -136,25 +136,20 @@ jobs:
             const hasStructure = S >= 0.35;
             const hasPattern = P >= 0.35;
             const hasClaySwir = A >= 0.35;
-
             const active = [S, A, P, F].filter(x => x >= 0.35).length;
 
             let kill = [];
             if (!hasStructure) kill.push('No Structure = Reject');
             if (!hasPattern) kill.push('No Pattern = Reject');
-            if (!hasClaySwir) kill.push('No Clay/SWIR = HOLD أو Reject حسب باقي المؤشرات');
-            if (active < 3) kill.push('أقل من 3 مؤشرات نشطة داخل نطاق القرار = Downgrade');
+            if (!hasClaySwir) kill.push('No Clay/SWIR = HOLD');
+            if (active < 3) kill.push('أقل من 3 مؤشرات نشطة = Downgrade');
 
             const rawIPI = 100 * ((0.35 * S) + (0.30 * A) + (0.20 * P) + (0.15 * F));
-
             let ipi = rawIPI;
+
             if (!hasStructure || !hasPattern) ipi = Math.min(ipi, 34);
             else if (!hasClaySwir) ipi = Math.min(ipi, 54);
             else if (active < 3) ipi = Math.min(ipi, 69);
-
-            const magneticRisk = clamp01(input.magneticRisk);
-            const quartzQI = clamp01(input.quartzQI);
-            const gpz = gpzStrategy(magneticRisk, quartzQI);
 
             return {
               ipi: Math.round(ipi),
@@ -162,7 +157,7 @@ jobs:
               className: classifyIPI(ipi),
               active,
               kill,
-              gpz
+              gpz: gpzStrategy(input.magneticRisk, input.quartzQI)
             };
           }
 
@@ -200,7 +195,6 @@ jobs:
 
             const [lat, setLat] = useState('19.6045911');
             const [lon, setLon] = useState('36.9171953');
-
             const [structure, setStructure] = useState('0.82');
             const [alteration, setAlteration] = useState('0.74');
             const [pattern, setPattern] = useState('0.78');
@@ -209,12 +203,12 @@ jobs:
             const [quartzQI, setQuartzQI] = useState('0.72');
 
             const result = useMemo(() => evaluateTarget({
-              structure: n(structure),
-              alteration: n(alteration),
-              pattern: n(pattern),
-              field: n(field),
-              magneticRisk: n(magneticRisk),
-              quartzQI: n(quartzQI)
+              structure: num(structure),
+              alteration: num(alteration),
+              pattern: num(pattern),
+              field: num(field),
+              magneticRisk: num(magneticRisk),
+              quartzQI: num(quartzQI)
             }), [structure, alteration, pattern, field, magneticRisk, quartzQI]);
 
             if (!unlocked) {
@@ -242,7 +236,7 @@ jobs:
                       <Text style={styles.buttonText}>دخول المنظومة</Text>
                     </TouchableOpacity>
 
-                    <Text style={styles.note}>رمز الدخول الافتراضي: Abuaziza2000</Text>
+                    <Text style={styles.note}>رمز الدخول: Abuaziza2000</Text>
                   </View>
                 </SafeAreaView>
               );
@@ -274,7 +268,7 @@ jobs:
                     <View style={styles.resultBox}>
                       <Text style={styles.bigScore}>{result.ipi}</Text>
                       <Text style={styles.className}>{result.className}</Text>
-                      <Text style={styles.small}>Raw IPI: {result.rawIPI} | Active indicators: {result.active}/4</Text>
+                      <Text style={styles.small}>Raw IPI: {result.rawIPI} | Active: {result.active}/4</Text>
                     </View>
 
                     {result.kill.length > 0 ? (
@@ -285,7 +279,7 @@ jobs:
                         ))}
                       </View>
                     ) : (
-                      <Text style={styles.pass}>لا توجد بوابة قتل حرجة. الهدف مؤهل للمتابعة الحقلية.</Text>
+                      <Text style={styles.pass}>لا توجد بوابة قتل حرجة. الهدف مؤهل للمتابعة.</Text>
                     )}
                   </View>
 
@@ -293,7 +287,6 @@ jobs:
                     <Text style={styles.cardTitle}>إعدادات GPZ 7000</Text>
                     <Field label="Magnetic Ground Risk" value={magneticRisk} setValue={setMagneticRisk} />
                     <Field label="Quartz QI" value={quartzQI} setValue={setQuartzQI} />
-
                     <Text style={styles.line}>Gold Mode: {result.gpz.mode}</Text>
                     <Text style={styles.line}>Ground Type: {result.gpz.ground}</Text>
                     <Text style={styles.line}>Sensitivity: {result.gpz.sensitivity}</Text>
@@ -313,7 +306,7 @@ jobs:
                   </View>
 
                   <View style={styles.card}>
-                    <Text style={styles.cardTitle}>KML مبدئي للهدف</Text>
+                    <Text style={styles.cardTitle}>KML مبدئي</Text>
                     <Text style={styles.kml}>
           {`<kml>
             <Document>
@@ -345,7 +338,7 @@ jobs:
                   style={styles.inputSmall}
                   value={value}
                   onChangeText={setValue}
-                  keyboardType="decimal-pad"
+                  keyboardType="numeric"
                   placeholderTextColor="#7f8c8d"
                 />
               </View>
@@ -353,19 +346,9 @@ jobs:
           }
 
           const styles = StyleSheet.create({
-            safe: {
-              flex: 1,
-              backgroundColor: '#071013'
-            },
-            lock: {
-              flex: 1,
-              padding: 24,
-              justifyContent: 'center'
-            },
-            container: {
-              padding: 16,
-              paddingBottom: 40
-            },
+            safe: { flex: 1, backgroundColor: '#071013' },
+            lock: { flex: 1, padding: 24, justifyContent: 'center' },
+            container: { padding: 16, paddingBottom: 40 },
             logo: {
               color: '#f1c40f',
               fontSize: 27,
@@ -373,12 +356,7 @@ jobs:
               textAlign: 'center',
               marginTop: 10
             },
-            sub: {
-              color: '#9fb3c8',
-              fontSize: 14,
-              textAlign: 'center',
-              marginTop: 6
-            },
+            sub: { color: '#9fb3c8', fontSize: 14, textAlign: 'center', marginTop: 6 },
             owner: {
               color: '#dfe6e9',
               fontSize: 13,
@@ -401,19 +379,9 @@ jobs:
               marginBottom: 12,
               textAlign: 'right'
             },
-            row: {
-              flexDirection: 'row',
-              gap: 10
-            },
-            field: {
-              flex: 1,
-              marginBottom: 10
-            },
-            label: {
-              color: '#9fb3c8',
-              marginBottom: 6,
-              textAlign: 'left'
-            },
+            row: { flexDirection: 'row', gap: 10 },
+            field: { flex: 1, marginBottom: 10 },
+            label: { color: '#9fb3c8', marginBottom: 6, textAlign: 'left' },
             input: {
               backgroundColor: '#0b141a',
               color: '#fff',
@@ -445,11 +413,7 @@ jobs:
               textAlign: 'center',
               fontSize: 17
             },
-            note: {
-              color: '#7f8c8d',
-              marginTop: 12,
-              textAlign: 'center'
-            },
+            note: { color: '#7f8c8d', marginTop: 12, textAlign: 'center' },
             resultBox: {
               backgroundColor: '#071013',
               borderRadius: 16,
@@ -457,21 +421,14 @@ jobs:
               alignItems: 'center',
               marginTop: 8
             },
-            bigScore: {
-              color: '#f1c40f',
-              fontSize: 56,
-              fontWeight: '900'
-            },
+            bigScore: { color: '#f1c40f', fontSize: 56, fontWeight: '900' },
             className: {
               color: '#ffffff',
               fontSize: 18,
               fontWeight: '800',
               textAlign: 'center'
             },
-            small: {
-              color: '#9fb3c8',
-              marginTop: 8
-            },
+            small: { color: '#9fb3c8', marginTop: 8 },
             killBox: {
               backgroundColor: '#2a1515',
               borderColor: '#8e2b2b',
@@ -480,50 +437,19 @@ jobs:
               padding: 12,
               marginTop: 12
             },
-            killTitle: {
-              color: '#ff7675',
-              fontWeight: '900',
-              marginBottom: 6,
-              fontSize: 16
-            },
-            kill: {
-              color: '#ffd6d6',
-              marginBottom: 4,
-              textAlign: 'right'
-            },
-            pass: {
-              color: '#55efc4',
-              marginTop: 12,
-              textAlign: 'right'
-            },
-            line: {
-              color: '#dfe6e9',
-              marginBottom: 7,
-              textAlign: 'right'
-            },
+            killTitle: { color: '#ff7675', fontWeight: '900', marginBottom: 6, fontSize: 16 },
+            kill: { color: '#ffd6d6', marginBottom: 4, textAlign: 'right' },
+            pass: { color: '#55efc4', marginTop: 12, textAlign: 'right' },
+            line: { color: '#dfe6e9', marginBottom: 7, textAlign: 'right' },
             libItem: {
               backgroundColor: '#071013',
               borderRadius: 14,
               padding: 12,
               marginBottom: 10
             },
-            libTitle: {
-              color: '#f1c40f',
-              fontWeight: '900',
-              fontSize: 16,
-              textAlign: 'right'
-            },
-            libType: {
-              color: '#9fb3c8',
-              marginTop: 3,
-              textAlign: 'right'
-            },
-            libUse: {
-              color: '#ffffff',
-              marginTop: 6,
-              lineHeight: 21,
-              textAlign: 'right'
-            },
+            libTitle: { color: '#f1c40f', fontWeight: '900', fontSize: 16, textAlign: 'right' },
+            libType: { color: '#9fb3c8', marginTop: 3, textAlign: 'right' },
+            libUse: { color: '#ffffff', marginTop: 6, lineHeight: 21, textAlign: 'right' },
             kml: {
               color: '#dfe6e9',
               fontSize: 11,
@@ -531,12 +457,7 @@ jobs:
               padding: 10,
               borderRadius: 10
             },
-            footer: {
-              color: '#9fb3c8',
-              textAlign: 'center',
-              marginTop: 10,
-              lineHeight: 22
-            }
+            footer: { color: '#9fb3c8', textAlign: 'center', marginTop: 10, lineHeight: 22 }
           });
           EOF
 
@@ -545,24 +466,25 @@ jobs:
           cd mobile
           npm install
 
-      - name: Generate Android project
+      - name: Generate Android native project
         run: |
           cd mobile
           npx expo prebuild --platform android --clean
 
-      - name: Build Android APK
+      - name: Build Release APK with bundled JS
         run: |
           cd mobile/android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
-      - name: Prepare APK
+      - name: Find and copy APK
         run: |
           mkdir -p output
-          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk output/BOUH_GOLD_PRO_ULTRA.apk
+          find mobile/android/app/build/outputs/apk -name "*.apk" -type f
+          cp $(find mobile/android/app/build/outputs/apk -name "*.apk" -type f | head -n 1) output/BOUH_GOLD_PRO_ULTRA_RELEASE.apk
 
-      - name: Upload APK
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: BOUH_GOLD_PRO_ULTRA_APK
-          path: output/BOUH_GOLD_PRO_ULTRA.apk
+          name: BOUH_GOLD_PRO_ULTRA_RELEASE_APK
+          path: output/BOUH_GOLD_PRO_ULTRA_RELEASE.apk
