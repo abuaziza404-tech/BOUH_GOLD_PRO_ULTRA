@@ -1,0 +1,296 @@
+name: Build BOUH Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create BOUH Expo App
+        run: |
+          rm -rf node_modules package-lock.json android ios App.js app.json package.json babel.config.js
+
+          cat > package.json <<'EOF'
+          {
+            "name": "bouh-gold-apk",
+            "version": "12.5.0",
+            "private": true,
+            "main": "node_modules/expo/AppEntry.js",
+            "scripts": {
+              "start": "expo start",
+              "prebuild": "expo prebuild",
+              "android": "expo run:android"
+            },
+            "dependencies": {
+              "expo": "~51.0.28",
+              "expo-status-bar": "~1.12.1",
+              "react": "18.2.0",
+              "react-native": "0.74.5"
+            },
+            "devDependencies": {
+              "@babel/core": "^7.24.0"
+            }
+          }
+          EOF
+
+          cat > babel.config.js <<'EOF'
+          module.exports = function(api) {
+            api.cache(true);
+            return {
+              presets: ['babel-preset-expo']
+            };
+          };
+          EOF
+
+          cat > app.json <<'EOF'
+          {
+            "expo": {
+              "name": "BOUH GOLD V12.5",
+              "slug": "bouh-gold-v125",
+              "version": "12.5.0",
+              "orientation": "portrait",
+              "userInterfaceStyle": "dark",
+              "android": {
+                "package": "com.bouh.gold.v125",
+                "versionCode": 125,
+                "permissions": [
+                  "ACCESS_FINE_LOCATION",
+                  "ACCESS_COARSE_LOCATION",
+                  "INTERNET"
+                ]
+              }
+            }
+          }
+          EOF
+
+          cat > App.js <<'EOF'
+          import React, { useState } from 'react';
+          import {
+            SafeAreaView,
+            ScrollView,
+            View,
+            Text,
+            TextInput,
+            TouchableOpacity,
+            StyleSheet,
+            Alert
+          } from 'react-native';
+          import { StatusBar } from 'expo-status-bar';
+
+          export default function App() {
+            const [lat, setLat] = useState('');
+            const [lon, setLon] = useState('');
+            const [note, setNote] = useState('');
+            const [result, setResult] = useState(null);
+
+            function analyze() {
+              const la = parseFloat(lat);
+              const lo = parseFloat(lon);
+
+              if (Number.isNaN(la) || Number.isNaN(lo)) {
+                Alert.alert('تنبيه', 'أدخل Latitude و Longitude بشكل صحيح');
+                return;
+              }
+
+              let score = 55;
+              let className = 'HOLD / فحص ميداني أولي';
+              let system = 'Structure → Pattern → Alteration → Confirmation → Decision';
+              let gpz = 'GPZ 7000: ابدأ Ground Type Difficult، Gold Mode High Yield، Sensitivity 8-11';
+
+              if (la >= 19.85 && la <= 20.05 && lo >= 36.70 && lo <= 36.85) {
+                score = 78;
+                className = 'GPZ-Regolith / Dark Slope / Wadi Trap';
+                gpz = 'GPZ 7000: Difficult، High Yield، Sensitivity 9-12، Swing بطيء، إعادة فحص بعد الكشط الخفيف';
+              }
+
+              if (la >= 20.60 && la <= 20.80 && lo >= 36.38 && lo <= 36.48) {
+                score = 72;
+                className = 'Quartz / Alteration Cluster Field Check';
+                gpz = 'GPZ 7000: إذا الأرض هادئة استخدم Normal + General/Deep + Sensitivity 12-15';
+              }
+
+              let decision = 'لا حفر قبل تأكيد ميداني';
+              if (score >= 85) decision = 'Target-B محتمل بشرط بيانات خام وتأكيد ميداني';
+              else if (score >= 70) decision = 'Candidate / يستحق فحص GPZ وملاحظة كوارتز وبنية';
+              else if (score >= 55) decision = 'HOLD / مراقبة وفحص سريع فقط';
+
+              setResult({
+                score,
+                className,
+                decision,
+                gpz,
+                system
+              });
+            }
+
+            return (
+              <SafeAreaView style={styles.root}>
+                <StatusBar style="light" />
+                <ScrollView contentContainerStyle={styles.container}>
+                  <Text style={styles.title}>BOUH GOLD DEEP DETECTOR</Text>
+                  <Text style={styles.subtitle}>V12.5 — نسخة Android ميدانية خفيفة</Text>
+
+                  <View style={styles.card}>
+                    <Text style={styles.cardTitle}>إدخال نقطة فحص</Text>
+
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Latitude مثال: 19.973186"
+                      placeholderTextColor="#879887"
+                      keyboardType="numeric"
+                      value={lat}
+                      onChangeText={setLat}
+                    />
+
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Longitude مثال: 36.745590"
+                      placeholderTextColor="#879887"
+                      keyboardType="numeric"
+                      value={lon}
+                      onChangeText={setLon}
+                    />
+
+                    <TextInput
+                      style={[styles.input, styles.textArea]}
+                      placeholder="ملاحظة الأرض: كوارتز، أرض سوداء، وادي، حفر قديمة، لودر..."
+                      placeholderTextColor="#879887"
+                      multiline
+                      value={note}
+                      onChangeText={setNote}
+                    />
+
+                    <TouchableOpacity style={styles.button} onPress={analyze}>
+                      <Text style={styles.buttonText}>تحليل النقطة</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {result && (
+                    <View style={styles.card}>
+                      <Text style={styles.cardTitle}>نتيجة BOUH</Text>
+                      <Text style={styles.line}>Score: {result.score}</Text>
+                      <Text style={styles.line}>Class: {result.className}</Text>
+                      <Text style={styles.line}>Decision: {result.decision}</Text>
+                      <Text style={styles.line}>GPZ: {result.gpz}</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.card}>
+                    <Text style={styles.cardTitle}>قانون القرار</Text>
+                    <Text style={styles.line}>Structure → Pattern → Alteration → Confirmation → Decision</Text>
+                    <Text style={styles.line}>الحفر تثبت النموذج، لكنها لا تكون هدف البحث.</Text>
+                    <Text style={styles.line}>التطبيق لا يثبت الذهب وحده. القرار النهائي من GPZ + الأرض + العينة.</Text>
+                  </View>
+                </ScrollView>
+              </SafeAreaView>
+            );
+          }
+
+          const styles = StyleSheet.create({
+            root: {
+              flex: 1,
+              backgroundColor: '#050805'
+            },
+            container: {
+              padding: 18,
+              paddingBottom: 42
+            },
+            title: {
+              color: '#d9ffd9',
+              fontSize: 23,
+              fontWeight: '900',
+              textAlign: 'center',
+              marginTop: 18
+            },
+            subtitle: {
+              color: '#9eb49e',
+              fontSize: 14,
+              textAlign: 'center',
+              marginBottom: 20
+            },
+            card: {
+              backgroundColor: '#0d160d',
+              borderColor: '#244124',
+              borderWidth: 1,
+              borderRadius: 18,
+              padding: 16,
+              marginBottom: 16
+            },
+            cardTitle: {
+              color: '#f1d57a',
+              fontSize: 18,
+              fontWeight: '800',
+              marginBottom: 12
+            },
+            input: {
+              backgroundColor: '#071007',
+              color: '#ffffff',
+              borderColor: '#294429',
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: 12,
+              marginBottom: 12,
+              fontSize: 15
+            },
+            textArea: {
+              minHeight: 95,
+              textAlignVertical: 'top'
+            },
+            button: {
+              backgroundColor: '#d8b94a',
+              padding: 15,
+              borderRadius: 14,
+              alignItems: 'center',
+              marginTop: 4
+            },
+            buttonText: {
+              color: '#071007',
+              fontSize: 17,
+              fontWeight: '900'
+            },
+            line: {
+              color: '#dcebdc',
+              fontSize: 15,
+              lineHeight: 23,
+              marginBottom: 8
+            }
+          });
+          EOF
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Prebuild Android Project
+        run: npx expo prebuild --platform android --clean --non-interactive
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BOUH-GOLD-V12-5-APK
+          path: android/app/build/outputs/apk/release/*.apk
