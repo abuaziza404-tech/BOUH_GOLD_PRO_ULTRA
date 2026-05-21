@@ -5,292 +5,320 @@ on:
 
 jobs:
   build:
-    name: Build APK
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Flutter Stable
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.5"
+          channel: stable
 
-      - name: Create BOUH Expo App
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Create BOUH Flutter project
         run: |
-          rm -rf node_modules package-lock.json android ios App.js app.json package.json babel.config.js
+          rm -rf android ios lib test web linux macos windows build .dart_tool pubspec.yaml pubspec.lock analysis_options.yaml
 
-          cat > package.json <<'EOF'
-          {
-            "name": "bouh-gold-apk",
-            "version": "12.5.0",
-            "private": true,
-            "main": "node_modules/expo/AppEntry.js",
-            "scripts": {
-              "start": "expo start",
-              "prebuild": "expo prebuild",
-              "android": "expo run:android"
-            },
-            "dependencies": {
-              "expo": "~51.0.28",
-              "expo-status-bar": "~1.12.1",
-              "react": "18.2.0",
-              "react-native": "0.74.5"
-            },
-            "devDependencies": {
-              "@babel/core": "^7.24.0"
+          flutter create . --platforms=android --project-name bouh_gold
+
+          cat > pubspec.yaml <<'EOF'
+          name: bouh_gold
+          description: BOUH GOLD DEEP DETECTOR V12.5
+          publish_to: "none"
+          version: 12.5.0+125
+
+          environment:
+            sdk: ">=3.5.0 <4.0.0"
+
+          dependencies:
+            flutter:
+              sdk: flutter
+
+          dev_dependencies:
+            flutter_test:
+              sdk: flutter
+            flutter_lints: ^4.0.0
+
+          flutter:
+            uses-material-design: true
+          EOF
+
+          mkdir -p lib
+
+          cat > lib/main.dart <<'EOF'
+          import 'package:flutter/material.dart';
+
+          void main() {
+            runApp(const BouhApp());
+          }
+
+          class BouhApp extends StatelessWidget {
+            const BouhApp({super.key});
+
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'BOUH GOLD V12.5',
+                theme: ThemeData.dark().copyWith(
+                  scaffoldBackgroundColor: const Color(0xFF050805),
+                  primaryColor: const Color(0xFFD8B94A),
+                ),
+                home: const BouhHomePage(),
+              );
             }
           }
-          EOF
 
-          cat > babel.config.js <<'EOF'
-          module.exports = function(api) {
-            api.cache(true);
-            return {
-              presets: ['babel-preset-expo']
-            };
-          };
-          EOF
+          class BouhHomePage extends StatefulWidget {
+            const BouhHomePage({super.key});
 
-          cat > app.json <<'EOF'
-          {
-            "expo": {
-              "name": "BOUH GOLD V12.5",
-              "slug": "bouh-gold-v125",
-              "version": "12.5.0",
-              "orientation": "portrait",
-              "userInterfaceStyle": "dark",
-              "android": {
-                "package": "com.bouh.gold.v125",
-                "versionCode": 125,
-                "permissions": [
-                  "ACCESS_FINE_LOCATION",
-                  "ACCESS_COARSE_LOCATION",
-                  "INTERNET"
-                ]
-              }
-            }
+            @override
+            State<BouhHomePage> createState() => _BouhHomePageState();
           }
-          EOF
 
-          cat > App.js <<'EOF'
-          import React, { useState } from 'react';
-          import {
-            SafeAreaView,
-            ScrollView,
-            View,
-            Text,
-            TextInput,
-            TouchableOpacity,
-            StyleSheet,
-            Alert
-          } from 'react-native';
-          import { StatusBar } from 'expo-status-bar';
+          class _BouhHomePageState extends State<BouhHomePage> {
+            final TextEditingController latController = TextEditingController();
+            final TextEditingController lonController = TextEditingController();
+            final TextEditingController noteController = TextEditingController();
 
-          export default function App() {
-            const [lat, setLat] = useState('');
-            const [lon, setLon] = useState('');
-            const [note, setNote] = useState('');
-            const [result, setResult] = useState(null);
+            String result = 'أدخل الإحداثية ثم اضغط تحليل.';
+            int score = 0;
 
-            function analyze() {
-              const la = parseFloat(lat);
-              const lo = parseFloat(lon);
+            void analyze() {
+              final double? lat = double.tryParse(latController.text.trim());
+              final double? lon = double.tryParse(lonController.text.trim());
 
-              if (Number.isNaN(la) || Number.isNaN(lo)) {
-                Alert.alert('تنبيه', 'أدخل Latitude و Longitude بشكل صحيح');
+              if (lat == null || lon == null) {
+                setState(() {
+                  result = 'خطأ: أدخل Latitude و Longitude بشكل صحيح.';
+                  score = 0;
+                });
                 return;
               }
 
-              let score = 55;
-              let className = 'HOLD / فحص ميداني أولي';
-              let system = 'Structure → Pattern → Alteration → Confirmation → Decision';
-              let gpz = 'GPZ 7000: ابدأ Ground Type Difficult، Gold Mode High Yield، Sensitivity 8-11';
+              int localScore = 55;
+              String targetClass = 'HOLD / فحص ميداني أولي';
+              String gpz = 'GPZ 7000: Ground Type Difficult، Gold Mode High Yield، Sensitivity 8-11.';
 
-              if (la >= 19.85 && la <= 20.05 && lo >= 36.70 && lo <= 36.85) {
-                score = 78;
-                className = 'GPZ-Regolith / Dark Slope / Wadi Trap';
-                gpz = 'GPZ 7000: Difficult، High Yield، Sensitivity 9-12، Swing بطيء، إعادة فحص بعد الكشط الخفيف';
+              if (lat >= 19.85 && lat <= 20.05 && lon >= 36.70 && lon <= 36.85) {
+                localScore = 78;
+                targetClass = 'GPZ-Regolith / Dark Slope / Wadi Trap';
+                gpz = 'GPZ 7000: Difficult، High Yield، Sensitivity 9-12، Swing بطيء، إعادة فحص بعد الكشط الخفيف.';
               }
 
-              if (la >= 20.60 && la <= 20.80 && lo >= 36.38 && lo <= 36.48) {
-                score = 72;
-                className = 'Quartz / Alteration Cluster Field Check';
-                gpz = 'GPZ 7000: إذا الأرض هادئة استخدم Normal + General/Deep + Sensitivity 12-15';
+              if (lat >= 20.60 && lat <= 20.80 && lon >= 36.38 && lon <= 36.48) {
+                localScore = 72;
+                targetClass = 'Quartz / Alteration Cluster Field Check';
+                gpz = 'GPZ 7000: إذا الأرض هادئة استخدم Normal + General/Deep + Sensitivity 12-15.';
               }
 
-              let decision = 'لا حفر قبل تأكيد ميداني';
-              if (score >= 85) decision = 'Target-B محتمل بشرط بيانات خام وتأكيد ميداني';
-              else if (score >= 70) decision = 'Candidate / يستحق فحص GPZ وملاحظة كوارتز وبنية';
-              else if (score >= 55) decision = 'HOLD / مراقبة وفحص سريع فقط';
+              String decision = 'لا حفر قبل تأكيد ميداني.';
+              if (localScore >= 85) {
+                decision = 'Target-B محتمل بشرط بيانات خام وتأكيد ميداني.';
+              } else if (localScore >= 70) {
+                decision = 'Candidate / يستحق فحص GPZ وملاحظة كوارتز وبنية.';
+              } else if (localScore >= 55) {
+                decision = 'HOLD / فحص سريع فقط.';
+              }
 
-              setResult({
-                score,
-                className,
-                decision,
-                gpz,
-                system
+              setState(() {
+                score = localScore;
+                result =
+                    'Score: $localScore\n'
+                    'Class: $targetClass\n'
+                    'Decision: $decision\n\n'
+                    '$gpz\n\n'
+                    'القانون: Structure → Pattern → Alteration → Confirmation → Decision\n'
+                    'التطبيق لا يثبت الذهب وحده. القرار النهائي من GPZ + الأرض + العينة.';
               });
             }
 
-            return (
-              <SafeAreaView style={styles.root}>
-                <StatusBar style="light" />
-                <ScrollView contentContainerStyle={styles.container}>
-                  <Text style={styles.title}>BOUH GOLD DEEP DETECTOR</Text>
-                  <Text style={styles.subtitle}>V12.5 — نسخة Android ميدانية خفيفة</Text>
+            @override
+            Widget build(BuildContext context) {
+              return Directionality(
+                textDirection: TextDirection.rtl,
+                child: Scaffold(
+                  appBar: AppBar(
+                    backgroundColor: const Color(0xFF0D160D),
+                    title: const Text('BOUH GOLD V12.5'),
+                    centerTitle: true,
+                  ),
+                  body: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'BOUH GOLD DEEP DETECTOR',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFFD9FFD9),
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'منظومة أبوعزيزة — نسخة Android ميدانية خفيفة',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Color(0xFF9EB49E), fontSize: 14),
+                        ),
+                        const SizedBox(height: 20),
 
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>إدخال نقطة فحص</Text>
+                        _card(
+                          title: 'إدخال نقطة فحص',
+                          child: Column(
+                            children: [
+                              _input(latController, 'Latitude مثال: 19.973186'),
+                              const SizedBox(height: 10),
+                              _input(lonController, 'Longitude مثال: 36.745590'),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: noteController,
+                                minLines: 3,
+                                maxLines: 5,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: _decor('ملاحظات الأرض: كوارتز، أرض سوداء، وادي، حفر قديمة...'),
+                              ),
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 52,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFD8B94A),
+                                    foregroundColor: const Color(0xFF071007),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  onPressed: analyze,
+                                  child: const Text(
+                                    'تحليل النقطة',
+                                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Latitude مثال: 19.973186"
-                      placeholderTextColor="#879887"
-                      keyboardType="numeric"
-                      value={lat}
-                      onChangeText={setLat}
-                    />
+                        _card(
+                          title: 'نتيجة BOUH',
+                          child: Text(
+                            result,
+                            style: const TextStyle(
+                              color: Color(0xFFDCEBDC),
+                              fontSize: 15,
+                              height: 1.7,
+                            ),
+                          ),
+                        ),
 
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Longitude مثال: 36.745590"
-                      placeholderTextColor="#879887"
-                      keyboardType="numeric"
-                      value={lon}
-                      onChangeText={setLon}
-                    />
-
-                    <TextInput
-                      style={[styles.input, styles.textArea]}
-                      placeholder="ملاحظة الأرض: كوارتز، أرض سوداء، وادي، حفر قديمة، لودر..."
-                      placeholderTextColor="#879887"
-                      multiline
-                      value={note}
-                      onChangeText={setNote}
-                    />
-
-                    <TouchableOpacity style={styles.button} onPress={analyze}>
-                      <Text style={styles.buttonText}>تحليل النقطة</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {result && (
-                    <View style={styles.card}>
-                      <Text style={styles.cardTitle}>نتيجة BOUH</Text>
-                      <Text style={styles.line}>Score: {result.score}</Text>
-                      <Text style={styles.line}>Class: {result.className}</Text>
-                      <Text style={styles.line}>Decision: {result.decision}</Text>
-                      <Text style={styles.line}>GPZ: {result.gpz}</Text>
-                    </View>
-                  )}
-
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>قانون القرار</Text>
-                    <Text style={styles.line}>Structure → Pattern → Alteration → Confirmation → Decision</Text>
-                    <Text style={styles.line}>الحفر تثبت النموذج، لكنها لا تكون هدف البحث.</Text>
-                    <Text style={styles.line}>التطبيق لا يثبت الذهب وحده. القرار النهائي من GPZ + الأرض + العينة.</Text>
-                  </View>
-                </ScrollView>
-              </SafeAreaView>
-            );
-          }
-
-          const styles = StyleSheet.create({
-            root: {
-              flex: 1,
-              backgroundColor: '#050805'
-            },
-            container: {
-              padding: 18,
-              paddingBottom: 42
-            },
-            title: {
-              color: '#d9ffd9',
-              fontSize: 23,
-              fontWeight: '900',
-              textAlign: 'center',
-              marginTop: 18
-            },
-            subtitle: {
-              color: '#9eb49e',
-              fontSize: 14,
-              textAlign: 'center',
-              marginBottom: 20
-            },
-            card: {
-              backgroundColor: '#0d160d',
-              borderColor: '#244124',
-              borderWidth: 1,
-              borderRadius: 18,
-              padding: 16,
-              marginBottom: 16
-            },
-            cardTitle: {
-              color: '#f1d57a',
-              fontSize: 18,
-              fontWeight: '800',
-              marginBottom: 12
-            },
-            input: {
-              backgroundColor: '#071007',
-              color: '#ffffff',
-              borderColor: '#294429',
-              borderWidth: 1,
-              borderRadius: 12,
-              padding: 12,
-              marginBottom: 12,
-              fontSize: 15
-            },
-            textArea: {
-              minHeight: 95,
-              textAlignVertical: 'top'
-            },
-            button: {
-              backgroundColor: '#d8b94a',
-              padding: 15,
-              borderRadius: 14,
-              alignItems: 'center',
-              marginTop: 4
-            },
-            buttonText: {
-              color: '#071007',
-              fontSize: 17,
-              fontWeight: '900'
-            },
-            line: {
-              color: '#dcebdc',
-              fontSize: 15,
-              lineHeight: 23,
-              marginBottom: 8
+                        _card(
+                          title: 'قانون التشغيل',
+                          child: const Text(
+                            'الحفر تثبت النموذج، لكنها لا تكون هدف البحث.\n'
+                            'هدف البحث هو الأرض التي تشبه ما قبل الحفر.\n\n'
+                            'No Structure + No Pattern = Reject أو HOLD.\n'
+                            'لا Target-B بدون بيانات خام أو تأكيد ميداني.',
+                            style: TextStyle(
+                              color: Color(0xFFDCEBDC),
+                              fontSize: 15,
+                              height: 1.7,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
             }
-          });
+
+            Widget _input(TextEditingController controller, String hint) {
+              return TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                style: const TextStyle(color: Colors.white),
+                decoration: _decor(hint),
+              );
+            }
+
+            InputDecoration _decor(String hint) {
+              return InputDecoration(
+                hintText: hint,
+                hintStyle: const TextStyle(color: Color(0xFF879887)),
+                filled: true,
+                fillColor: const Color(0xFF071007),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF294429)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFD8B94A)),
+                ),
+              );
+            }
+
+            Widget _card({required String title, required Widget child}) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0D160D),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFF244124)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFFF1D57A),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    child,
+                  ],
+                ),
+              );
+            }
+          }
           EOF
 
       - name: Install dependencies
-        run: npm install
+        run: flutter pub get
 
-      - name: Prebuild Android Project
-        run: npx expo prebuild --platform android --clean --non-interactive
+      - name: Analyze project
+        run: flutter analyze
 
-      - name: Build APK
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Rename APK
         run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease
+          mkdir -p output
+          cp build/app/outputs/flutter-apk/app-release.apk output/BOUH-GOLD-V12-5.apk
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: BOUH-GOLD-V12-5-APK
-          path: android/app/build/outputs/apk/release/*.apk
+          path: output/BOUH-GOLD-V12-5.apk
