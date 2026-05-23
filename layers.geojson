@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "name": "BOUH Demo Geological Layers",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Demo Structural Corridor",
+        "class": "Structure",
+        "priority": "HOLD",
+        "note": "مثال توضيحي فقط: استبدله بملفاتك الحقيقية GeoJSON/KML/CSV."
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            36.42,
+            19.78
+          ],
+          [
+            36.45,
+            19.8
+          ],
+          [
+            36.48,
+            19.83
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Demo Field Check Circle",
+        "class": "Radar-30m",
+        "priority": "Example",
+        "radius_m": 30,
+        "note": "دائرة 30 متر كمثال عرض؛ ليست هدف ذهب حقيقي."
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          36.451,
+          19.789
+        ]
+      }
+    }
+  ]
+}
